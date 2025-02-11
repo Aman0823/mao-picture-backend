@@ -1,0 +1,42 @@
+server:
+  port: 8082
+  servlet:
+    context-path: /api
+spring:
+  application:
+    name: mao-picture-backend
+    #    数据库配置
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql:aws://localhost:3306/mao_picture
+    username: root
+    password: 123456
+mybatis-plus:
+  configuration:
+    # MyBatis 配置  驼峰
+    map-underscore-to-camel-case: true
+#    只在开发环境打印日志
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+#    逻辑删除
+  global-config:
+    db-config:
+      logic-delete-field: isDeleted # 全局逻辑删除字段名
+      logic-delete-value: 1 # 逻辑已删除值
+      logic-not-delete-value: 0 # 逻辑未删除值
+
+#接口文档
+knife4j:
+  enable: true
+  openapi:
+    title: 接口文档
+    concat: 八一菜刀
+    group:
+      default:
+        group-name: 分组名称
+        api-rule: package
+        api-rule-resources:
+          - com.example.maopicturebackend.controller
+
+
+
+
