@@ -10,7 +10,6 @@ import org.springframework.context.annotation.EnableAspectJAutoProxy;
 @EnableAspectJAutoProxy(exposeProxy = true)
 
 public class MaoPictureBackendApplication {
-
     public static void main(String[] args) {
         SpringApplication.run(MaoPictureBackendApplication.class, args);
     }
