@@ -10,19 +10,18 @@ import com.example.maopicturebackend.constant.UserConstant;
 import com.example.maopicturebackend.exception.BusinessException;
 import com.example.maopicturebackend.exception.ErrorCode;
 import com.example.maopicturebackend.exception.ThrowUtils;
-import com.example.maopicturebackend.manager.CosManager;
-import com.example.maopicturebackend.model.dto.file.PictureEditDTO;
-import com.example.maopicturebackend.model.dto.file.PictureQueryDTO;
-import com.example.maopicturebackend.model.dto.file.PictureUpdateDTO;
+import com.example.maopicturebackend.model.dto.picture.PictureEditDTO;
+import com.example.maopicturebackend.model.dto.picture.PictureQueryDTO;
+import com.example.maopicturebackend.model.dto.picture.PictureReviewDTO;
+import com.example.maopicturebackend.model.dto.picture.PictureUpdateDTO;
 import com.example.maopicturebackend.model.dto.user.PictureUploadDTO;
 import com.example.maopicturebackend.model.entity.Picture;
+import com.example.maopicturebackend.model.entity.PictureTagCategory;
 import com.example.maopicturebackend.model.entity.User;
+import com.example.maopicturebackend.model.enums.PictureReviewStatusEnum;
 import com.example.maopicturebackend.model.vo.PictureVO;
 import com.example.maopicturebackend.service.PictureService;
 import com.example.maopicturebackend.service.UserService;
-import com.qcloud.cos.model.COSObject;
-import com.qcloud.cos.model.COSObjectInputStream;
-import com.qcloud.cos.utils.IOUtils;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
@@ -32,10 +31,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.io.File;
-import java.io.IOException;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
 
 
 @RestController
@@ -50,7 +48,6 @@ public class PictureController {
 
     @PostMapping("/upload")
     @ApiOperation(value = "用户上传图片")
-    @AuthCheck(mustRole = UserConstant.DEFAULT_ROLE)
     public BaseResponse<PictureVO> uploadPicture(@RequestPart("file") MultipartFile multipartFile,
                                                  PictureUploadDTO pictureUploadDTO,
                                                  HttpServletRequest request){
@@ -86,14 +83,16 @@ public class PictureController {
      * 更新图片（仅管理员可用）
      */
     @PostMapping("/update")
-    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
-    public BaseResponse<Boolean> updatePicture(@RequestBody PictureUpdateDTO pictureUpdateRequest) {
+    public BaseResponse<Boolean> updatePicture(@RequestBody PictureUpdateDTO pictureUpdateRequest,HttpServletRequest request) {
         if (pictureUpdateRequest == null || pictureUpdateRequest.getId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         // 将实体类和 DTO 进行转换
         Picture picture = new Picture();
         BeanUtils.copyProperties(pictureUpdateRequest, picture);
+//        权限校验
+        User user = userService.getUserInfo(request);
+        pictureService.fillReviewParams(picture,user);
         // 注意将 list 转为 string
         picture.setTags(JSONUtil.toJsonStr(pictureUpdateRequest.getTags()));
         // 数据校验
@@ -139,10 +138,10 @@ public class PictureController {
      * 分页获取图片列表（仅管理员可用）
      */
     @PostMapping("/list/page")
-    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Page<Picture>> listPictureByPage(@RequestBody PictureQueryDTO pictureQueryRequest) {
         long current = pictureQueryRequest.getCurrent();
         long size = pictureQueryRequest.getPageSize();
+        pictureQueryRequest.setReviewStatus(PictureReviewStatusEnum.PASS.getValue());
         // 查询数据库
         Page<Picture> picturePage = pictureService.page(new Page<>(current, size),
                 pictureService.getQueryWrapper(pictureQueryRequest));
@@ -192,10 +191,36 @@ public class PictureController {
         if (!oldPicture.getUserId().equals(loginUser.getId()) && !userService.isAdmin(loginUser)) {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }
+//        权限校验
+        pictureService.fillReviewParams(picture,loginUser);
         // 操作数据库
         boolean result = pictureService.updateById(picture);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         return ResultUtils.success(true);
+    }
+    @GetMapping("/tag_category")
+    public BaseResponse<PictureTagCategory> listPictureTagCategory() {
+        PictureTagCategory pictureTagCategory = new PictureTagCategory();
+        List<String> tagList = Arrays.asList("热门", "搞笑", "生活", "高清", "艺术", "校园", "背景", "简历", "创意");
+        List<String> categoryList = Arrays.asList("模板", "电商", "表情包", "素材", "海报");
+        pictureTagCategory.setTagList(tagList);
+        pictureTagCategory.setCategoryList(categoryList);
+        return ResultUtils.success(pictureTagCategory);
+    }
+
+    /**
+     * 管理员审核图片
+     */
+    @PostMapping("/review")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<String> doPictureReview(@RequestBody PictureReviewDTO pictureReviewDTO,
+                                                HttpServletRequest request){
+        ThrowUtils.throwIf(pictureReviewDTO==null,ErrorCode.PARAMS_ERROR);
+
+        User user = userService.getUserInfo(request);
+        pictureService.doPictureReview(pictureReviewDTO,user);
+        return ResultUtils.success("ok");
+
     }
 
 

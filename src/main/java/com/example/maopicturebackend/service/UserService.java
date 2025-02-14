@@ -2,11 +2,9 @@ package com.example.maopicturebackend.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.example.maopicturebackend.model.dto.file.PictureQueryDTO;
 import com.example.maopicturebackend.model.dto.user.UserLoginDTO;
 import com.example.maopicturebackend.model.dto.user.UserQueryDTO;
 import com.example.maopicturebackend.model.dto.user.UserRegisterDTO;
-import com.example.maopicturebackend.model.entity.Picture;
 import com.example.maopicturebackend.model.entity.User;
 import com.example.maopicturebackend.model.vo.UserLoginVO;
 

@@ -2,8 +2,8 @@ package com.example.maopicturebackend.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.example.maopicturebackend.model.dto.file.PictureQueryDTO;
-import com.example.maopicturebackend.model.dto.file.UploadPictureResult;
+import com.example.maopicturebackend.model.dto.picture.PictureQueryDTO;
+import com.example.maopicturebackend.model.dto.picture.PictureReviewDTO;
 import com.example.maopicturebackend.model.dto.user.PictureUploadDTO;
 import com.example.maopicturebackend.model.entity.Picture;
 import com.baomidou.mybatisplus.extension.service.IService;
@@ -35,4 +35,7 @@ public interface PictureService extends IService<Picture> {
     Page<PictureVO> getPictureVOPage(Page<Picture> picturePage, HttpServletRequest request);
 
     void validPicture(Picture picture);
+    void doPictureReview(PictureReviewDTO pictureReviewDTO,User user);
+
+    void fillReviewParams(Picture picture, User loginUser);
 }

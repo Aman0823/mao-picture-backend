@@ -1,4 +1,4 @@
-package com.example.maopicturebackend.model.entity;
+package generator.domain;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;

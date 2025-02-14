@@ -1,4 +1,4 @@
-package com.example.maopicturebackend.model.dto.file;
+package com.example.maopicturebackend.model.dto.picture;
 
 import lombok.Data;
 

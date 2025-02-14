@@ -1,6 +1,5 @@
 package com.example.maopicturebackend.service.impl;
 
-import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
@@ -10,11 +9,9 @@ import com.example.maopicturebackend.constant.UserConstant;
 import com.example.maopicturebackend.exception.BusinessException;
 import com.example.maopicturebackend.exception.ErrorCode;
 import com.example.maopicturebackend.exception.ThrowUtils;
-import com.example.maopicturebackend.model.dto.file.PictureQueryDTO;
 import com.example.maopicturebackend.model.dto.user.UserLoginDTO;
 import com.example.maopicturebackend.model.dto.user.UserQueryDTO;
 import com.example.maopicturebackend.model.dto.user.UserRegisterDTO;
-import com.example.maopicturebackend.model.entity.Picture;
 import com.example.maopicturebackend.model.entity.User;
 import com.example.maopicturebackend.model.enums.UserRoleEnum;
 import com.example.maopicturebackend.model.vo.UserLoginVO;
@@ -25,7 +22,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
 import javax.servlet.http.HttpServletRequest;
-import java.util.List;
 
 /**
  * @author mao

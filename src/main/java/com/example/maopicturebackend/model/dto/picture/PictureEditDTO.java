@@ -1,4 +1,4 @@
-package com.example.maopicturebackend.model.dto.file;
+package com.example.maopicturebackend.model.dto.picture;
 
 import lombok.Data;
 
@@ -32,6 +32,7 @@ public class PictureEditDTO implements Serializable {
      * 标签  
      */  
     private List<String> tags;
+
   
     private static final long serialVersionUID = 1L;  
 }
