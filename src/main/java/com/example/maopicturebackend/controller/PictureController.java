@@ -14,7 +14,7 @@ import com.example.maopicturebackend.model.dto.picture.PictureEditDTO;
 import com.example.maopicturebackend.model.dto.picture.PictureQueryDTO;
 import com.example.maopicturebackend.model.dto.picture.PictureReviewDTO;
 import com.example.maopicturebackend.model.dto.picture.PictureUpdateDTO;
-import com.example.maopicturebackend.model.dto.user.PictureUploadDTO;
+import com.example.maopicturebackend.model.dto.picture.PictureUploadDTO;
 import com.example.maopicturebackend.model.entity.Picture;
 import com.example.maopicturebackend.model.entity.PictureTagCategory;
 import com.example.maopicturebackend.model.entity.User;
@@ -222,6 +222,20 @@ public class PictureController {
         return ResultUtils.success("ok");
 
     }
+    /**
+     * 通过 URL 上传图片（可重新上传）
+     */
+    @PostMapping("/upload/url")
+    public BaseResponse<PictureVO> uploadPictureByUrl(
+            @RequestBody PictureUploadDTO pictureUploadDTO,
+            HttpServletRequest request) {
+        User loginUser = userService.getUserInfo(request);
+        String fileUrl = pictureUploadDTO.getFileUrl();
+
+        PictureVO pictureVO = pictureService.uploadPicture(fileUrl, pictureUploadDTO, loginUser);
+        return ResultUtils.success(pictureVO);
+    }
+
 
 
 }

@@ -4,7 +4,8 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.maopicturebackend.model.dto.picture.PictureQueryDTO;
 import com.example.maopicturebackend.model.dto.picture.PictureReviewDTO;
-import com.example.maopicturebackend.model.dto.user.PictureUploadDTO;
+import com.example.maopicturebackend.model.dto.picture.PictureUploadByBatchDTO;
+import com.example.maopicturebackend.model.dto.picture.PictureUploadDTO;
 import com.example.maopicturebackend.model.entity.Picture;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.maopicturebackend.model.entity.User;
@@ -21,12 +22,12 @@ import javax.servlet.http.HttpServletRequest;
 public interface PictureService extends IService<Picture> {
     /**
      * 上传文件
-     * @param multipartFile
+     * @param inputSource
      * @param pictureUploadDTO
      * @param user
      * @return
      */
-    PictureVO uploadPicture(MultipartFile multipartFile, PictureUploadDTO pictureUploadDTO, User user);
+    PictureVO uploadPicture(Object inputSource, PictureUploadDTO pictureUploadDTO, User user);
 
     QueryWrapper<Picture> getQueryWrapper(PictureQueryDTO pictureQueryRequest);
 
@@ -38,4 +39,16 @@ public interface PictureService extends IService<Picture> {
     void doPictureReview(PictureReviewDTO pictureReviewDTO,User user);
 
     void fillReviewParams(Picture picture, User loginUser);
+    /**
+     * 批量抓取和创建图片
+     *
+     * @param pictureUploadByBatchDTO
+     * @param loginUser
+     * @return 成功创建的图片数
+     */
+    Integer uploadPictureByBatch(
+            PictureUploadByBatchDTO pictureUploadByBatchDTO,
+            User loginUser
+    );
+
 }

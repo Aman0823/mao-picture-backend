@@ -10,7 +10,19 @@ public class PictureUploadDTO implements Serializable {
     /**  
      * 图片 id（用于修改）  
      */  
-    private Long id;  
-  
+    private Long id;
+    /**
+     * 文件地址
+     */
+    private String fileUrl;
+    /**
+     * 名称前缀
+     */
+    private String namePrefix;
+    /**
+     * 图片名称
+     */
+    private String picName;
+
     private static final long serialVersionUID = 1L;  
 }
