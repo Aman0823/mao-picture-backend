@@ -23,11 +23,6 @@ import org.springframework.util.DigestUtils;
 
 import javax.servlet.http.HttpServletRequest;
 
-/**
- * @author mao
- * @description 针对表【user(用户)】的数据库操作Service实现
- * @createDate 2025-02-12 16:31:24
- */
 @Service
 public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         implements UserService {

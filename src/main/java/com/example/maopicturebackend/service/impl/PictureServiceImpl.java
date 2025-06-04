@@ -9,7 +9,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.maopicturebackend.exception.BusinessException;
 import com.example.maopicturebackend.exception.ErrorCode;
 import com.example.maopicturebackend.exception.ThrowUtils;
-import com.example.maopicturebackend.manager.FileManager;
+import com.example.maopicturebackend.manager.CosManager;
 import com.example.maopicturebackend.manager.upload.FilePictureUpload;
 import com.example.maopicturebackend.manager.upload.PictureUploadTemplate;
 import com.example.maopicturebackend.manager.upload.UrlPictureUpload;
@@ -32,6 +32,8 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.springframework.beans.BeanUtils;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
@@ -53,13 +55,15 @@ import java.util.stream.Collectors;
 public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     implements PictureService{
     @Resource
-    private FileManager fileManager;
-    @Resource
     private UserService userService;
     @Resource
+    @Lazy
     private FilePictureUpload filePictureUpload;
     @Resource
+    @Lazy
     private UrlPictureUpload urlPictureUpload;
+    @Resource
+    private CosManager cosManager;
     @Override
     public PictureVO uploadPicture(Object inputSource, PictureUploadDTO pictureUploadDTO, User user) {
 //        权限校验
@@ -98,7 +102,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             picName = pictureUploadDTO.getPicName();
         }
         picture.setUrl(uploadPictureResult.getUrl());
-        picture.setName(uploadPictureResult.getPicName());
+        picture.setName(picName);
         picture.setPicSize(uploadPictureResult.getPicSize());
         picture.setPicWidth(uploadPictureResult.getPicWidth());
         picture.setPicHeight(uploadPictureResult.getPicHeight());
@@ -301,11 +305,14 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             log.error("获取页面失败");
             throw new BusinessException(ErrorCode.OPERATION_ERROR,"获取页面失败");
         }
+//        Element代表HTML文档中的一个元素，例如<div>, <p>, <img>等。
+//        在此代码中，getElementsByClass("dgControl").first()用于寻找第一个类名为"dgControl"的元素。
         Element div = (Element) document.getElementsByClass("dgControl").first();
         if (div==null){
             log.error("获取元素失败");
             throw new BusinessException(ErrorCode.OPERATION_ERROR);
         }
+//        选择所有类名为“mimg”的<img>元素，表示图片的集合
         Elements imgElementList = div.select("img.mimg");
         int uploadCount = 0;
         for (Element imgElement : imgElementList) {
@@ -343,6 +350,30 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         }
 
         return uploadCount;
+    }
+
+    /**
+     * 图片清理方法
+     * @param oldPicture
+     */
+    @Async
+    @Override
+    public void clearPictureFile(Picture oldPicture) {
+//        判断该图片是否被多条记录使用
+        String pictureUrl = oldPicture.getUrl();
+        long count = this.lambdaQuery()
+                .eq(Picture::getUrl,pictureUrl)
+                .count();
+//        有不止一条记录用到了该图片，不清理
+        if (count > 1) {
+            return;
+        }
+        cosManager.deleteObj(oldPicture.getUrl());
+//        清理缩略图
+        String thumbnailUrl = oldPicture.getThumbNailUrl();
+        if(StrUtil.isNotBlank(thumbnailUrl)) {
+            cosManager.deleteObj(thumbnailUrl);
+        }
     }
 
 

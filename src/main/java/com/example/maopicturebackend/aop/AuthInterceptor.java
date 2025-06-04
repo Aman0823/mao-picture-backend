@@ -1,7 +1,6 @@
 package com.example.maopicturebackend.aop;
 
 import com.example.maopicturebackend.annotation.AuthCheck;
-import com.example.maopicturebackend.constant.UserConstant;
 import com.example.maopicturebackend.exception.ErrorCode;
 import com.example.maopicturebackend.exception.ThrowUtils;
 import com.example.maopicturebackend.model.entity.User;
@@ -10,18 +9,12 @@ import com.example.maopicturebackend.service.UserService;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
-import org.aspectj.lang.annotation.Pointcut;
 import org.springframework.stereotype.Component;
-import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
-
 import javax.annotation.Resource;
-import javax.servlet.Servlet;
 import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpSession;
 
 @Aspect
 @Component

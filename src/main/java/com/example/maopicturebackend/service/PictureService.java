@@ -50,5 +50,6 @@ public interface PictureService extends IService<Picture> {
             PictureUploadByBatchDTO pictureUploadByBatchDTO,
             User loginUser
     );
+    void clearPictureFile(Picture oldPicture);
 
 }

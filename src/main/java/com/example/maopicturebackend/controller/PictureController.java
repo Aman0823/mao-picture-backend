@@ -1,5 +1,6 @@
 package com.example.maopicturebackend.controller;
 
+import cn.hutool.core.util.RandomUtil;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.maopicturebackend.annotation.AuthCheck;
@@ -10,11 +11,7 @@ import com.example.maopicturebackend.constant.UserConstant;
 import com.example.maopicturebackend.exception.BusinessException;
 import com.example.maopicturebackend.exception.ErrorCode;
 import com.example.maopicturebackend.exception.ThrowUtils;
-import com.example.maopicturebackend.model.dto.picture.PictureEditDTO;
-import com.example.maopicturebackend.model.dto.picture.PictureQueryDTO;
-import com.example.maopicturebackend.model.dto.picture.PictureReviewDTO;
-import com.example.maopicturebackend.model.dto.picture.PictureUpdateDTO;
-import com.example.maopicturebackend.model.dto.picture.PictureUploadDTO;
+import com.example.maopicturebackend.model.dto.picture.*;
 import com.example.maopicturebackend.model.entity.Picture;
 import com.example.maopicturebackend.model.entity.PictureTagCategory;
 import com.example.maopicturebackend.model.entity.User;
@@ -22,10 +19,15 @@ import com.example.maopicturebackend.model.enums.PictureReviewStatusEnum;
 import com.example.maopicturebackend.model.vo.PictureVO;
 import com.example.maopicturebackend.service.PictureService;
 import com.example.maopicturebackend.service.UserService;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.util.DigestUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -34,6 +36,7 @@ import javax.servlet.http.HttpServletRequest;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 
 @RestController
@@ -45,17 +48,27 @@ public class PictureController {
     private PictureService pictureService;
     @Resource
     private UserService userService;
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
+
+    private final Cache<String, String> LOCAL_CACHE =
+            Caffeine.newBuilder().initialCapacity(1024)
+                    .maximumSize(10000L)
+//                    缓存五分钟移除
+                    .expireAfterWrite(5L, TimeUnit.MINUTES)
+                    .build();
 
     @PostMapping("/upload")
     @ApiOperation(value = "用户上传图片")
     public BaseResponse<PictureVO> uploadPicture(@RequestPart("file") MultipartFile multipartFile,
                                                  PictureUploadDTO pictureUploadDTO,
-                                                 HttpServletRequest request){
+                                                 HttpServletRequest request) {
         User userInfo = userService.getUserInfo(request);
-        ThrowUtils.throwIf(userInfo==null,ErrorCode.NOT_LOGIN_ERROR);
+        ThrowUtils.throwIf(userInfo == null, ErrorCode.NOT_LOGIN_ERROR);
         PictureVO pictureVO = pictureService.uploadPicture(multipartFile, pictureUploadDTO, userInfo);
         return ResultUtils.success(pictureVO);
     }
+
     /**
      * 删除图片
      */
@@ -83,7 +96,7 @@ public class PictureController {
      * 更新图片（仅管理员可用）
      */
     @PostMapping("/update")
-    public BaseResponse<Boolean> updatePicture(@RequestBody PictureUpdateDTO pictureUpdateRequest,HttpServletRequest request) {
+    public BaseResponse<Boolean> updatePicture(@RequestBody PictureUpdateDTO pictureUpdateRequest, HttpServletRequest request) {
         if (pictureUpdateRequest == null || pictureUpdateRequest.getId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
@@ -92,7 +105,7 @@ public class PictureController {
         BeanUtils.copyProperties(pictureUpdateRequest, picture);
 //        权限校验
         User user = userService.getUserInfo(request);
-        pictureService.fillReviewParams(picture,user);
+        pictureService.fillReviewParams(picture, user);
         // 注意将 list 转为 string
         picture.setTags(JSONUtil.toJsonStr(pictureUpdateRequest.getTags()));
         // 数据校验
@@ -192,12 +205,13 @@ public class PictureController {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }
 //        权限校验
-        pictureService.fillReviewParams(picture,loginUser);
+        pictureService.fillReviewParams(picture, loginUser);
         // 操作数据库
         boolean result = pictureService.updateById(picture);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         return ResultUtils.success(true);
     }
+
     @GetMapping("/tag_category")
     public BaseResponse<PictureTagCategory> listPictureTagCategory() {
         PictureTagCategory pictureTagCategory = new PictureTagCategory();
@@ -214,14 +228,15 @@ public class PictureController {
     @PostMapping("/review")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<String> doPictureReview(@RequestBody PictureReviewDTO pictureReviewDTO,
-                                                HttpServletRequest request){
-        ThrowUtils.throwIf(pictureReviewDTO==null,ErrorCode.PARAMS_ERROR);
+                                                HttpServletRequest request) {
+        ThrowUtils.throwIf(pictureReviewDTO == null, ErrorCode.PARAMS_ERROR);
 
         User user = userService.getUserInfo(request);
-        pictureService.doPictureReview(pictureReviewDTO,user);
+        pictureService.doPictureReview(pictureReviewDTO, user);
         return ResultUtils.success("ok");
 
     }
+
     /**
      * 通过 URL 上传图片（可重新上传）
      */
@@ -234,6 +249,75 @@ public class PictureController {
 
         PictureVO pictureVO = pictureService.uploadPicture(fileUrl, pictureUploadDTO, loginUser);
         return ResultUtils.success(pictureVO);
+    }
+
+    /**
+     * 分页查询缓存中的图片列表
+     *
+     * @param pictureQueryDTO
+     * @param request
+     * @return
+     */
+    @PostMapping("/list/page/vo/cache")
+    public BaseResponse<Page<PictureVO>> listPictureVOByPageWithCache(@RequestBody PictureQueryDTO pictureQueryDTO, HttpServletRequest request) {
+        long current = pictureQueryDTO.getCurrent();
+        long size = pictureQueryDTO.getPageSize();
+//        限制爬虫
+        ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
+//        普通用户默认智能查看已过审的图片
+        pictureQueryDTO.setReviewStatus(PictureReviewStatusEnum.PASS.getValue());
+//        构建缓存key
+        String queryCondition = JSONUtil.toJsonStr(pictureQueryDTO);
+        String hashKey = DigestUtils.md5DigestAsHex(queryCondition.getBytes());
+//        1.从本地缓存中获取
+        String cacheKey = "listPictureVOByPage:" + hashKey;
+        String cachedValue = LOCAL_CACHE.getIfPresent(cacheKey);
+//        如果命中本地缓存
+        if (cachedValue != null) {
+            Page<PictureVO> pictureVOPage = JSONUtil.toBean(cachedValue,Page.class);
+            return ResultUtils.success(pictureVOPage);
+        }
+//        如果没有命中本地缓存
+//        2.从redis中查询
+        String redisKey = "maoPicture:listPictureByPage:" + hashKey;
+        ValueOperations<String, String> valueOperations = stringRedisTemplate.opsForValue();
+        cachedValue = valueOperations.get(redisKey);
+        if (cachedValue != null) {
+//            如果缓存命中
+            LOCAL_CACHE.put(cacheKey,cachedValue);
+            Page<PictureVO> cachedPage = JSONUtil.toBean(cachedValue, Page.class);
+            return ResultUtils.success(cachedPage);
+        }
+//        查询数据库
+        Page<Picture> picturePage = pictureService.page(new Page<>(current, size),
+                pictureService.getQueryWrapper(pictureQueryDTO));
+//        获取封装类
+        Page<PictureVO> pictureVOPage = pictureService.getPictureVOPage(picturePage, request);
+//        更新缓存
+        String cacheValue = JSONUtil.toJsonStr(pictureVOPage);
+//        更新本地缓存
+        LOCAL_CACHE.put(cacheKey,cacheValue);
+//        存入redis,5-10分钟随机过期时间，防止雪崩
+        valueOperations.set(redisKey, JSONUtil.toJsonStr(pictureVOPage), 300 + RandomUtil.randomInt(0, 300), TimeUnit.SECONDS);
+        return ResultUtils.success(pictureVOPage);
+    }
+
+    /**
+     * 批量抓取图片
+     * @param pictureUploadByBatchRequest
+     * @param request
+     * @return
+     */
+    @PostMapping("/upload/batch")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<Integer> uploadPictureByBatch(
+            @RequestBody PictureUploadByBatchDTO pictureUploadByBatchRequest,
+            HttpServletRequest request
+    ) {
+        ThrowUtils.throwIf(pictureUploadByBatchRequest == null, ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getUserInfo(request);
+        int uploadCount = pictureService.uploadPictureByBatch(pictureUploadByBatchRequest, loginUser);
+        return ResultUtils.success(uploadCount);
     }
 
 
