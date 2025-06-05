@@ -5,14 +5,11 @@ import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.NumberUtil;
 import cn.hutool.core.util.RandomUtil;
-import cn.hutool.crypto.SecureUtil;
 import com.example.maopicturebackend.config.CosClientConfig;
 import com.example.maopicturebackend.exception.BusinessException;
 import com.example.maopicturebackend.exception.ErrorCode;
 import com.example.maopicturebackend.manager.CosManager;
 import com.example.maopicturebackend.model.dto.file.UploadPictureResult;
-import com.example.maopicturebackend.model.entity.Picture;
-import com.example.maopicturebackend.service.PictureService;
 import com.qcloud.cos.model.PutObjectResult;
 import com.qcloud.cos.model.ciModel.persistence.CIObject;
 import com.qcloud.cos.model.ciModel.persistence.ImageInfo;
@@ -33,9 +30,6 @@ public abstract class PictureUploadTemplate {
     @Resource
     protected CosClientConfig cosClientConfig;
 
-    @Resource
-    protected PictureService pictureService;
-
     /**
      * 模板方法，定义上传流程
      */
@@ -52,32 +46,34 @@ public abstract class PictureUploadTemplate {
 
         File file = null;
         try {
-            // 3. 创建临时文件
+            // 创建临时文件
             file = File.createTempFile(uploadPath, null);
             // 处理文件来源（本地或 URL）
             processFile(inputSource, file);
-
-            // 4. 上传图片到对象存储
+            // 上传图片到对象存储
             PutObjectResult putObjectResult = cosManager.putPictureObject(uploadPath, file);
             ImageInfo imageInfo = putObjectResult.getCiUploadResult().getOriginalInfo().getImageInfo();
             ProcessResults processResults = putObjectResult.getCiUploadResult().getProcessResults();
             List<CIObject> objectList = processResults.getObjectList();
             if (CollUtil.isNotEmpty(objectList)) {
-                CIObject compressedObj = objectList.get(0);
-                CIObject thumbnailCIObj = compressedObj;
-//                有生成缩略图才得到缩略图
+                CIObject compressedCiObject = objectList.get(0);
+                // 缩略图默认等于压缩图
+                CIObject thumbnailCiObject = compressedCiObject;
+                // 有生成缩略图，才得到缩略图
                 if (objectList.size() > 1) {
-                    thumbnailCIObj = objectList.get(1);
+                    thumbnailCiObject = objectList.get(1);
                 }
-//                封装压缩图返回结果
-                return buildResult(originFilename, compressedObj, thumbnailCIObj);
+                // 封装压缩图返回结果
+                return buildResult(originFilename, compressedCiObject, thumbnailCiObject);
             }
-            // 5. 封装返回结果
+
+            // 封装原图返回结果
             return buildResult(originFilename, file, uploadPath, imageInfo);
         } catch (Exception e) {
             log.error("图片上传到对象存储失败", e);
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "上传失败");
-        } finally {
+        }
+        finally {
             // 6. 清理临时文件
             deleteTempFile(file);
         }
@@ -116,14 +112,7 @@ public abstract class PictureUploadTemplate {
         return uploadPictureResult;
     }
 
-    /**
-     * 从压缩图中获取图片信息
-     *
-     * @param originFilename
-     * @param compressedCiObject
-     * @return
-     */
-    private UploadPictureResult buildResult(String originFilename, CIObject compressedCiObject, CIObject thumbnailCIObj) {
+    private UploadPictureResult buildResult(String originFilename, CIObject ciObject, CIObject compressedCiObject) {
         UploadPictureResult uploadPictureResult = new UploadPictureResult();
         int picWidth = compressedCiObject.getWidth();
         int picHeight = compressedCiObject.getHeight();
@@ -134,10 +123,10 @@ public abstract class PictureUploadTemplate {
         uploadPictureResult.setPicScale(picScale);
         uploadPictureResult.setPicFormat(compressedCiObject.getFormat());
         uploadPictureResult.setPicSize(compressedCiObject.getSize().longValue());
-//        设置缩略图
-        uploadPictureResult.setThumbnailUrl(cosClientConfig.getHost() + "/" + thumbnailCIObj.getKey());
         // 设置图片为压缩后的地址
         uploadPictureResult.setUrl(cosClientConfig.getHost() + "/" + compressedCiObject.getKey());
+        // 设置缩略图
+        uploadPictureResult.setThumbnailUrl(cosClientConfig.getHost() + "/" + ciObject.getKey());
         return uploadPictureResult;
     }
 
