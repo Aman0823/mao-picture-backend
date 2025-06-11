@@ -8,9 +8,11 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.maopicturebackend.model.entity.User;
 import com.example.maopicturebackend.model.vo.PictureVO;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.List;
 
 /**
 * @author mao
@@ -57,4 +59,10 @@ public interface PictureService extends IService<Picture> {
     void deletePic(long pictureId, User user);
 
     void editPic(PictureEditDTO pictureEditDTO, User user);
+
+    List<PictureVO> searchPicByColor(Long spaceId, String picColor, User user);
+
+    void editPicByBatch(PictureEditByBatchDTO pictureEditByBatchDTO,User user);
+
+    void batchEditPicMetaData(PictureEditByBatchDTO pictureEditByBatchDTO,Long spaceId,Long userId);
 }

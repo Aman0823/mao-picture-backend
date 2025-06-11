@@ -4,6 +4,8 @@ import cn.hutool.core.util.RandomUtil;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.maopicturebackend.annotation.AuthCheck;
+import com.example.maopicturebackend.api.imagesearch.ImageSearchApiFacade;
+import com.example.maopicturebackend.api.imagesearch.model.ImageSearchResult;
 import com.example.maopicturebackend.common.BaseResponse;
 import com.example.maopicturebackend.common.DeleteRequest;
 import com.example.maopicturebackend.common.ResultUtils;
@@ -35,8 +37,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
-import java.util.Arrays;
-import java.util.Date;
+import java.util.*;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -176,13 +177,13 @@ public class PictureController {
 //            普通用户默认只能查看已过审的公开数据
             pictureQueryRequest.setReviewStatus(PictureReviewStatusEnum.PASS.getValue());
             pictureQueryRequest.setNullSpaceId(true);
-        }else{
+        } else {
 //            私有空间
             User user = userService.getUserInfo(request);
             Space space = spaceService.getById(spaceId);
-            ThrowUtils.throwIf(space==null,ErrorCode.NOT_FOUND_ERROR,"空间权限不存在");
-            if (!user.getId().equals(space.getUserId())){
-                throw new BusinessException(ErrorCode.NO_AUTH_ERROR,"没有空间权限");
+            ThrowUtils.throwIf(space == null, ErrorCode.NOT_FOUND_ERROR, "空间权限不存在");
+            if (!user.getId().equals(space.getUserId())) {
+                throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "没有空间权限");
             }
         }
         // 限制爬虫
@@ -315,6 +316,53 @@ public class PictureController {
         User loginUser = userService.getUserInfo(request);
         int uploadCount = pictureService.uploadPictureByBatch(pictureUploadByBatchRequest, loginUser);
         return ResultUtils.success(uploadCount);
+    }
+
+    /**
+     * 以图搜图
+     *
+     * @param searchPictureByPictureDTO
+     * @return
+     */
+    @PostMapping("/search/byPicture")
+    public BaseResponse<List<ImageSearchResult>> searchPicByPic(@RequestBody SearchPictureByPictureDTO searchPictureByPictureDTO) {
+        ThrowUtils.throwIf(searchPictureByPictureDTO == null, ErrorCode.PARAMS_ERROR);
+        Long pictureId = searchPictureByPictureDTO.getPictureId();
+        ThrowUtils.throwIf(pictureId <= 0 || pictureId == null, ErrorCode.PARAMS_ERROR);
+        Picture picture = pictureService.getById(pictureId);
+        ThrowUtils.throwIf(picture == null, ErrorCode.NOT_FOUND_ERROR);
+        List<ImageSearchResult> imageSearchResults = ImageSearchApiFacade.searchImage(picture.getUrl());
+        return ResultUtils.success(imageSearchResults);
+    }
+
+    /**
+     * 以图片搜图（用户自己上传的图片）
+     *
+     * @param searchPictureByPictureDTO
+     * @param request
+     * @return
+     */
+    @PostMapping("/search/byColor")
+    public BaseResponse<List<PictureVO>> searchPicByColor(@RequestBody SearchPictureByColorDTO searchPictureByPictureDTO, HttpServletRequest request) {
+        ThrowUtils.throwIf(searchPictureByPictureDTO.getSpaceId() == null || searchPictureByPictureDTO.getPicColor() == null, ErrorCode.PARAMS_ERROR);
+        User user = userService.getUserInfo(request);
+        ThrowUtils.throwIf(user == null, ErrorCode.NOT_LOGIN_ERROR);
+        List<PictureVO> pictureVOList = pictureService.searchPicByColor(searchPictureByPictureDTO.getSpaceId(), searchPictureByPictureDTO.getPicColor(), user);
+        return ResultUtils.success(pictureVOList);
+    }
+
+    /**
+     * 批量更新图片
+     * @param pictureEditByBatchDTO
+     * @param request
+     * @return
+     */
+    @PostMapping("/edit/batch")
+    public BaseResponse<Boolean> editPicByBatch(@RequestBody PictureEditByBatchDTO pictureEditByBatchDTO, HttpServletRequest request) {
+        ThrowUtils.throwIf(pictureEditByBatchDTO==null,ErrorCode.PARAMS_ERROR);
+        User userInfo = userService.getUserInfo(request);
+        pictureService.editPicByBatch(pictureEditByBatchDTO,userInfo);
+        return ResultUtils.success(true);
     }
 
 
