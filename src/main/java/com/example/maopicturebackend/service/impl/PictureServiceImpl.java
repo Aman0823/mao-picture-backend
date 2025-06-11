@@ -1,5 +1,6 @@
 package com.example.maopicturebackend.service.impl;
 
+import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
@@ -7,6 +8,10 @@ import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.example.maopicturebackend.api.aliyun.model.CreateOutPaintingTaskResponse;
+import com.example.maopicturebackend.api.aliyun.model.dto.CreateOutPaintingTaskDTO;
+import com.example.maopicturebackend.api.aliyun.model.dto.CreatePictureOutPaintingTaskDTO;
+import com.example.maopicturebackend.api.aliyun.sub.AliYunAiApi;
 import com.example.maopicturebackend.exception.BusinessException;
 import com.example.maopicturebackend.exception.ErrorCode;
 import com.example.maopicturebackend.exception.ThrowUtils;
@@ -28,7 +33,6 @@ import com.example.maopicturebackend.service.SpaceService;
 import com.example.maopicturebackend.service.UserService;
 import com.example.maopicturebackend.utils.ColorSimilarUtils;
 import lombok.extern.slf4j.Slf4j;
-import org.checkerframework.checker.units.qual.C;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -72,6 +76,8 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     private TransactionTemplate transactionTemplate;
     @Resource
     private ThreadPoolExecutor threadPoolExecutor;
+    @Resource
+    private AliYunAiApi aliYunAiApi;
 
     @Override
     public PictureVO uploadPicture(Object inputSource, PictureUploadDTO pictureUploadDTO, User user) {
@@ -682,6 +688,31 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR,"没有空间访问权限");
         }
     }
+
+    /**
+     * 创建AI扩图任务
+     * @param createPictureOutPaintingTaskRequest
+     * @param loginUser
+     * @return
+     */
+    @Override
+    public CreateOutPaintingTaskResponse createPictureOutPaintingTask(CreatePictureOutPaintingTaskDTO createPictureOutPaintingTaskRequest, User loginUser) {
+        // 获取图片信息
+        Long pictureId = createPictureOutPaintingTaskRequest.getPictureId();
+        Picture picture = Optional.ofNullable(this.getById(pictureId))
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND_ERROR));
+        // 权限校验
+        checkPicAuth(loginUser, picture);
+        // 构造请求参数
+        CreateOutPaintingTaskDTO taskRequest = new CreateOutPaintingTaskDTO();
+        CreateOutPaintingTaskDTO.Input input = new CreateOutPaintingTaskDTO.Input();
+        input.setImageUrl(picture.getUrl());
+        taskRequest.setInput(input);
+        BeanUtil.copyProperties(createPictureOutPaintingTaskRequest, taskRequest);
+        // 创建任务
+        return aliYunAiApi.createOutPaintingTask(taskRequest);
+    }
+
 
 
 }

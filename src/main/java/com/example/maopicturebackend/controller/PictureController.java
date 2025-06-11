@@ -4,6 +4,10 @@ import cn.hutool.core.util.RandomUtil;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.maopicturebackend.annotation.AuthCheck;
+import com.example.maopicturebackend.api.aliyun.model.CreateOutPaintingTaskResponse;
+import com.example.maopicturebackend.api.aliyun.model.GetOutPaintingTaskResponse;
+import com.example.maopicturebackend.api.aliyun.model.dto.CreatePictureOutPaintingTaskDTO;
+import com.example.maopicturebackend.api.aliyun.sub.AliYunAiApi;
 import com.example.maopicturebackend.api.imagesearch.ImageSearchApiFacade;
 import com.example.maopicturebackend.api.imagesearch.model.ImageSearchResult;
 import com.example.maopicturebackend.common.BaseResponse;
@@ -55,6 +59,8 @@ public class PictureController {
     private StringRedisTemplate stringRedisTemplate;
     @Resource
     private SpaceService spaceService;
+    @Resource
+    private AliYunAiApi aliYunAiApi;
 
     private final Cache<String, String> LOCAL_CACHE =
             Caffeine.newBuilder().initialCapacity(1024)
@@ -353,17 +359,42 @@ public class PictureController {
 
     /**
      * 批量更新图片
+     *
      * @param pictureEditByBatchDTO
      * @param request
      * @return
      */
     @PostMapping("/edit/batch")
     public BaseResponse<Boolean> editPicByBatch(@RequestBody PictureEditByBatchDTO pictureEditByBatchDTO, HttpServletRequest request) {
-        ThrowUtils.throwIf(pictureEditByBatchDTO==null,ErrorCode.PARAMS_ERROR);
+        ThrowUtils.throwIf(pictureEditByBatchDTO == null, ErrorCode.PARAMS_ERROR);
         User userInfo = userService.getUserInfo(request);
-        pictureService.editPicByBatch(pictureEditByBatchDTO,userInfo);
+        pictureService.editPicByBatch(pictureEditByBatchDTO, userInfo);
         return ResultUtils.success(true);
     }
 
+    /**
+     * 创建AI扩图任务
+     *
+     * @param pictureOutPaintingTaskDTO
+     * @param request
+     * @return
+     */
+    @PostMapping("/out_painting/create_task")
+    public BaseResponse<CreateOutPaintingTaskResponse> createOutPaintingTask(
+            @RequestBody CreatePictureOutPaintingTaskDTO pictureOutPaintingTaskDTO, HttpServletRequest request) {
+        if (pictureOutPaintingTaskDTO == null || pictureOutPaintingTaskDTO.getPictureId() == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        User user = userService.getUserInfo(request);
+        CreateOutPaintingTaskResponse task = pictureService.createPictureOutPaintingTask(pictureOutPaintingTaskDTO, user);
+        return ResultUtils.success(task);
+    }
+
+    @GetMapping("/out_painting/get_task")
+    public BaseResponse<GetOutPaintingTaskResponse> getOutPaintingTaskResponse(String taskId){
+        ThrowUtils.throwIf(taskId==null,ErrorCode.PARAMS_ERROR);
+        GetOutPaintingTaskResponse outPaintingTask = aliYunAiApi.getOutPaintingTask(taskId);
+        return ResultUtils.success(outPaintingTask);
+    }
 
 }
