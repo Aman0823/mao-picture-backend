@@ -1,6 +1,7 @@
-package com.example.maopicturebackend.model.vo;
+package com.example.maopicturebackend.model.vo.space;
 
 import com.example.maopicturebackend.model.entity.Space;
+import com.example.maopicturebackend.model.vo.UserVO;
 import lombok.Data;
 import org.springframework.beans.BeanUtils;
 

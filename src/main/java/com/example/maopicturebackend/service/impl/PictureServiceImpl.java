@@ -74,8 +74,8 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     private SpaceService spaceService;
     @Resource
     private TransactionTemplate transactionTemplate;
-    @Resource
-    private ThreadPoolExecutor threadPoolExecutor;
+//    @Resource
+//    private ThreadPoolExecutor threadPoolExecutor;
     @Resource
     private AliYunAiApi aliYunAiApi;
 
@@ -629,50 +629,50 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         }
     }
 
-
-    /**
-     * 批量编辑图片分类和标签
-     * @param pictureEditByBatchDTO
-     * @param spaceId
-     * @param userId
-     */
-    @Transactional(rollbackFor = Exception.class)
-    @Override
-    public void batchEditPicMetaData(PictureEditByBatchDTO pictureEditByBatchDTO, Long spaceId, Long userId) {
-//        参数校验
-        validateBatchEditRequest(pictureEditByBatchDTO,spaceId,userId);
-//        查询空间下的图片
-        List<Picture> pictureList = this.lambdaQuery()
-                .eq(Picture::getSpaceId,spaceId)
-                .in(Picture::getId,pictureEditByBatchDTO.getPictureIdList())
-                .list();
-        if (pictureList.isEmpty()){
-            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR,"指定的图片不存在");
-        }
-//        分批处理
-        int batchSize = 100;
-        List<CompletableFuture<Void>> futures = new ArrayList<>();
-        for (int i = 0; i < pictureList.size(); i++) {
-            List<Picture> batch = pictureList.subList(i,Math.min(i+batchSize,pictureList.size()));
-//            异步处理每批数据
-            CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
-                batch.forEach(picture -> {
-//                    编辑分类和标签
-                    if (pictureEditByBatchDTO.getCategory()!=null){
-                        picture.setCategory(pictureEditByBatchDTO.getCategory());
-                    }
-                    if (pictureEditByBatchDTO.getTags()!=null){
-                        picture.setTags(String.join(",",pictureEditByBatchDTO.getTags()));
-                    }
-                });
-                boolean updated = this.updateBatchById(batch);
-                ThrowUtils.throwIf(!updated,ErrorCode.OPERATION_ERROR,"批量更新失败");
-            },threadPoolExecutor);
-            futures.add(future);
-        }
-//        等待所有任务完成
-        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
-    }
+//
+//    /**
+//     * 批量编辑图片分类和标签
+//     * @param pictureEditByBatchDTO
+//     * @param spaceId
+//     * @param userId
+//     */
+//    @Transactional(rollbackFor = Exception.class)
+//    @Override
+//    public void batchEditPicMetaData(PictureEditByBatchDTO pictureEditByBatchDTO, Long spaceId, Long userId) {
+////        参数校验
+//        validateBatchEditRequest(pictureEditByBatchDTO,spaceId,userId);
+////        查询空间下的图片
+//        List<Picture> pictureList = this.lambdaQuery()
+//                .eq(Picture::getSpaceId,spaceId)
+//                .in(Picture::getId,pictureEditByBatchDTO.getPictureIdList())
+//                .list();
+//        if (pictureList.isEmpty()){
+//            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR,"指定的图片不存在");
+//        }
+////        分批处理
+//        int batchSize = 100;
+//        List<CompletableFuture<Void>> futures = new ArrayList<>();
+//        for (int i = 0; i < pictureList.size(); i++) {
+//            List<Picture> batch = pictureList.subList(i,Math.min(i+batchSize,pictureList.size()));
+////            异步处理每批数据
+//            CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+//                batch.forEach(picture -> {
+////                    编辑分类和标签
+//                    if (pictureEditByBatchDTO.getCategory()!=null){
+//                        picture.setCategory(pictureEditByBatchDTO.getCategory());
+//                    }
+//                    if (pictureEditByBatchDTO.getTags()!=null){
+//                        picture.setTags(String.join(",",pictureEditByBatchDTO.getTags()));
+//                    }
+//                });
+//                boolean updated = this.updateBatchById(batch);
+//                ThrowUtils.throwIf(!updated,ErrorCode.OPERATION_ERROR,"批量更新失败");
+//            },threadPoolExecutor);
+//            futures.add(future);
+//        }
+////        等待所有任务完成
+//        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+//    }
 
     private void validateBatchEditRequest(PictureEditByBatchDTO pictureEditByBatchDTO, Long spaceId, Long userId) {
         List<Long> pictureIdList = pictureEditByBatchDTO.getPictureIdList();

@@ -66,7 +66,7 @@ public interface PictureService extends IService<Picture> {
 
     void editPicByBatch(PictureEditByBatchDTO pictureEditByBatchDTO,User user);
 
-    void batchEditPicMetaData(PictureEditByBatchDTO pictureEditByBatchDTO,Long spaceId,Long userId);
+//    void batchEditPicMetaData(PictureEditByBatchDTO pictureEditByBatchDTO,Long spaceId,Long userId);
 
     CreateOutPaintingTaskResponse createPictureOutPaintingTask(CreatePictureOutPaintingTaskDTO createPictureOutPaintingTaskRequest, User loginUser);
 }

@@ -31,4 +31,5 @@ public interface SpaceService extends IService<Space> {
      * @return
      */
     long addSpace(SpaceAddDTO spaceAddDTO, User loginUser);
+    void checkSpaceAuth(User loginUser,Space space);
 }
