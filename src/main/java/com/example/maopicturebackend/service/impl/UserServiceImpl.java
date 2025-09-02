@@ -6,27 +6,32 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 
 import com.example.maopicturebackend.constant.UserConstant;
+import com.example.maopicturebackend.conventor.UserConverter;
 import com.example.maopicturebackend.exception.BusinessException;
 import com.example.maopicturebackend.exception.ErrorCode;
 import com.example.maopicturebackend.exception.ThrowUtils;
+import com.example.maopicturebackend.manager.auth.StpKit;
 import com.example.maopicturebackend.model.dto.user.UserLoginDTO;
 import com.example.maopicturebackend.model.dto.user.UserQueryDTO;
 import com.example.maopicturebackend.model.dto.user.UserRegisterDTO;
 import com.example.maopicturebackend.model.entity.User;
 import com.example.maopicturebackend.model.enums.UserRoleEnum;
 import com.example.maopicturebackend.model.vo.UserLoginVO;
+import com.example.maopicturebackend.model.vo.UserVO;
 import com.example.maopicturebackend.service.UserService;
 import com.example.maopicturebackend.mapper.UserMapper;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
+import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 
 @Service
 public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         implements UserService {
-
+    @Resource
+    private UserConverter userConverter;
     /**
      * 用户注册
      * @param userRegisterDTO
@@ -98,9 +103,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         ThrowUtils.throwIf(user==null,ErrorCode.PARAMS_ERROR,"账号不存在或密码错误");
 //        保存用户登录状态
         request.getSession().setAttribute(UserConstant.USER_LOGIN_STATE,user);
-        UserLoginVO result = new UserLoginVO();
-        BeanUtils.copyProperties(user,result);
-        return result;
+//        记录以后登录态到sa-token
+        StpKit.SPACE.login(user.getId());
+        StpKit.SPACE.getSession().set(UserConstant.USER_LOGIN_STATE,user);
+        //BeanUtils.copyProperties(user,result);
+        return userConverter.toLoginVO(user);
     }
 
     /**
@@ -170,7 +177,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         return user.getUserRole().equals(UserRoleEnum.ADMIN.getValue());
     }
 
-
+    @Override
+    public UserVO getUserVO(User user) {
+        UserVO userVO = new UserVO();
+        BeanUtils.copyProperties(user,userVO);
+        return userVO;
+    }
 
 
 }

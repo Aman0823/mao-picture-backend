@@ -4,6 +4,9 @@ import com.example.maopicturebackend.model.dto.space.SpaceAddDTO;
 import com.example.maopicturebackend.model.entity.Space;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.maopicturebackend.model.entity.User;
+import com.example.maopicturebackend.model.vo.space.SpaceVO;
+
+import javax.servlet.http.HttpServletRequest;
 
 /**
 * @author mao
@@ -32,4 +35,6 @@ public interface SpaceService extends IService<Space> {
      */
     long addSpace(SpaceAddDTO spaceAddDTO, User loginUser);
     void checkSpaceAuth(User loginUser,Space space);
+
+    SpaceVO getSpaceVO(Space space, HttpServletRequest request);
 }

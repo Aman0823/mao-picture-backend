@@ -56,6 +56,11 @@ public class SpaceVO implements Serializable {
     private Date createTime;
 
     /**
+     * 空间类型：0-私有 1-团队
+     */
+    private Integer spaceType;
+
+    /**
      * 编辑时间
      */
     private Date editTime;

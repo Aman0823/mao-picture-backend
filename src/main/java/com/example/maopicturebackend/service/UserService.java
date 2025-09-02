@@ -7,6 +7,7 @@ import com.example.maopicturebackend.model.dto.user.UserQueryDTO;
 import com.example.maopicturebackend.model.dto.user.UserRegisterDTO;
 import com.example.maopicturebackend.model.entity.User;
 import com.example.maopicturebackend.model.vo.UserLoginVO;
+import com.example.maopicturebackend.model.vo.UserVO;
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -62,4 +63,5 @@ public interface UserService extends IService<User> {
      */
     boolean isAdmin(User user);
 
+    UserVO getUserVO(User user);
 }
